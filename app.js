@@ -1,20 +1,19 @@
-/* PDF parser tuned for CDC "Dividend / Zakat & Tax Deduction Summary Report"
-   It detects each row by lines that start with a date dd/mm/yyyy
-   Then extracts last 6 numeric columns:
-   securities, gross, tax, jhTax, zakat, net
-*/
+/* CDC PDF → Extract rows → Store → Summaries */
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.js";
 
 const els = {
   fileInput: document.getElementById("fileInput"),
+  fileName: document.getElementById("fileName"),
   btnImport: document.getElementById("btnImport"),
   status: document.getElementById("status"),
   previewBody: document.querySelector("#previewTable tbody"),
+
   btnRefresh: document.getElementById("btnRefresh"),
   btnClear: document.getElementById("btnClear"),
   btnExport: document.getElementById("btnExport"),
+
   symbolFilter: document.getElementById("symbolFilter"),
   btnCopy: document.getElementById("btnCopy"),
 
@@ -35,14 +34,13 @@ const els = {
 };
 
 let selectedFile = null;
-let lastExtractedRows = [];
 
 els.fileInput.addEventListener("change", () => {
   selectedFile = els.fileInput.files?.[0] || null;
+
   els.btnImport.disabled = !selectedFile;
-  els.status.textContent = selectedFile
-    ? `Selected: ${selectedFile.name}`
-    : "No file selected.";
+  els.fileName.textContent = selectedFile ? selectedFile.name : "No file selected";
+  els.status.textContent = selectedFile ? `Selected: ${selectedFile.name}` : "Choose a PDF to start.";
 });
 
 els.btnImport.addEventListener("click", async () => {
@@ -53,18 +51,19 @@ els.btnImport.addEventListener("click", async () => {
     const rows = await extractRowsFromPdf(selectedFile);
 
     if (!rows.length) {
-      els.status.textContent = "No rows detected. (If your PDF layout differs, I can adjust the parser.)";
+      els.status.textContent =
+        "No rows detected. If your PDF layout differs, tell me and I’ll adjust the parser.";
       return;
     }
 
-    lastExtractedRows = rows;
     renderPreview(rows);
 
     els.status.textContent = `Extracted ${rows.length} rows. Saving to database…`;
     await dbAddMany(rows);
 
-    els.status.textContent = `Imported & saved: ${rows.length} rows. Refreshing summary…`;
+    els.status.textContent = `Imported ${rows.length} rows. Refreshing summary…`;
     await refreshSummary();
+
     els.status.textContent = `Done. Imported ${rows.length} rows into the database.`;
   } catch (e) {
     console.error(e);
@@ -103,21 +102,29 @@ els.btnCopy.addEventListener("click", async () => {
   alert("Summary copied.");
 });
 
+/* ---------- helpers ---------- */
+
 function money(n) {
   const x = Number(n || 0);
   return x.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-
 function intFmt(n) {
   const x = Number(n || 0);
   return x.toLocaleString("en-PK", { maximumFractionDigits: 0 });
 }
-
 function parseNumber(s) {
   if (s == null) return 0;
   const cleaned = String(s).replace(/,/g, "").trim();
   const val = Number(cleaned);
   return Number.isFinite(val) ? val : 0;
+}
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function setKpis(totals) {
@@ -229,7 +236,6 @@ function renderSummaryTable(grouped, totals) {
 }
 
 function renderRequestedText(grouped, totals) {
-  // EXACT requested style
   const lines = [];
   lines.push(`Dividend total: ${money(totals.gross)}`);
   grouped.forEach(g => {
@@ -243,15 +249,18 @@ function renderRequestedText(grouped, totals) {
   els.summaryText.textContent = lines.join("\n");
 }
 
+/* ---------- PDF extraction ---------- */
+
 async function extractRowsFromPdf(file) {
   const buf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
 
-  // extract text page by page
   const allLines = [];
   for (let p = 1; p <= pdf.numPages; p++) {
     const page = await pdf.getPage(p);
     const textContent = await page.getTextContent();
+
+    // join every "text item" into a new line; then normalize
     const pageText = textContent.items.map(it => it.str).join("\n");
     pageText.split(/\r?\n/).forEach(line => {
       const cleaned = line.replace(/\s+/g, " ").trim();
@@ -259,29 +268,24 @@ async function extractRowsFromPdf(file) {
     });
   }
 
-  // Build "row blocks" starting with dd/mm/yyyy
+  // Detect row blocks starting with dd/mm/yyyy
   const dateStart = /^\d{2}\/\d{2}\/\d{4}\b/;
   const blocks = [];
   let current = [];
 
   for (const line of allLines) {
-    if (line.startsWith("Total ")) continue;
-    if (line.startsWith("Dividend / Zakat")) continue;
-    if (line.startsWith("Date and Time Printed")) continue;
-    if (line.startsWith("UIN")) continue;
-    if (line.startsWith("Name")) continue;
-    if (line.startsWith("Security Symbol")) continue;
-    if (line.startsWith("Payment Date")) continue;
-    if (line.startsWith("* As per Issuer")) continue;
-    if (line.startsWith("Disclaimer")) continue;
-    if (line.startsWith("By accessing")) continue;
-    if (line.startsWith("End of Report")) continue;
+    // Skip obvious headers/footers
+    const skipPrefixes = [
+      "Dividend / Zakat", "Date and Time Printed", "UIN", "Name", "Security Symbol",
+      "Payment Date", "* As per Issuer", "Disclaimer", "By accessing", "End of Report",
+      "Total "
+    ];
+    if (skipPrefixes.some(pfx => line.startsWith(pfx))) continue;
 
     if (dateStart.test(line)) {
       if (current.length) blocks.push(current.join(" "));
       current = [line];
     } else if (current.length) {
-      // append wrapped content (symbol name wraps)
       current.push(line);
     }
   }
@@ -292,14 +296,10 @@ async function extractRowsFromPdf(file) {
     const r = parseCdcBlock(b);
     if (r) rows.push(r);
   }
-
   return rows;
 }
 
 function parseCdcBlock(block) {
-  // Example (conceptual):
-  // 20/08/2024 20/08/2024 EFERT - ENGRO FERTILIZERS LIMITED 06684-... ... 450 1,350.00 405.00 0.00 0.00 945.00
-
   // 1) capture two dates at start
   const mDates = block.match(/^(\d{2}\/\d{2}\/\d{4})\s+(\d{2}\/\d{2}\/\d{4})\s+(.*)$/);
   if (!mDates) return null;
@@ -309,8 +309,7 @@ function parseCdcBlock(block) {
   const rest = mDates[3];
 
   // 2) capture last 6 numeric columns:
-  // securities (int), gross, tax, jhTax, zakat, net
-  // We search from the end, allowing commas and decimals.
+  // securities, gross, tax, jhTax, zakat, net
   const num = "(?:-?\\d{1,3}(?:,\\d{3})*|-?\\d+)(?:\\.\\d+)?";
   const tailRe = new RegExp(
     "\\s(" + num + ")\\s(" + num + ")\\s(" + num + ")\\s(" + num + ")\\s(" + num + ")\\s(" + num + ")\\s*$"
@@ -326,11 +325,9 @@ function parseCdcBlock(block) {
   const zakat = parseNumber(mTail[5]);
   const net = parseNumber(mTail[6]);
 
-  // 3) Symbol is usually right after dates and before " - "
-  // We'll take the part before " - " as symbol, and after as company name (until other ids)
   const beforeTail = rest.slice(0, mTail.index).trim();
 
-  // symbol/name extraction
+  // symbol extraction (usually: SYMBOL - NAME ...)
   let symbol = "";
   let secName = "";
 
@@ -338,14 +335,10 @@ function parseCdcBlock(block) {
   if (mSym) {
     symbol = String(mSym[1]).toUpperCase();
     secName = String(mSym[2]).trim();
-    // strip trailing account/warrant etc if present (often contains digits-digits or lots of tokens)
-    // keep name reasonably clean by cutting at first obvious account pattern
-    secName = secName.split(/\s\d{4,}-\d{3,}|\s\d{7,}|\sNONFILER|\sNon\sFiller|\sFILER|\sFiller|\s\d{1,2}%/i)[0].trim();
   } else {
-    // fallback: first token as symbol
     const parts = beforeTail.split(" ");
     symbol = String(parts[0] || "").toUpperCase();
-    secName = "";
+    secName = parts.slice(1).join(" ").trim();
   }
 
   if (!symbol) return null;
@@ -366,14 +359,7 @@ function parseCdcBlock(block) {
   };
 }
 
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
+/* ---------- export ---------- */
 
 function toCsv(rows) {
   const headers = [
