@@ -1,5 +1,3 @@
-/* CDC PDF → Extract rows → Store → Summaries */
-
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.js";
 
@@ -37,8 +35,8 @@ let selectedFile = null;
 
 els.fileInput.addEventListener("change", () => {
   selectedFile = els.fileInput.files?.[0] || null;
-
   els.btnImport.disabled = !selectedFile;
+
   els.fileName.textContent = selectedFile ? selectedFile.name : "No file selected";
   els.status.textContent = selectedFile ? `Selected: ${selectedFile.name}` : "Choose a PDF to start.";
 });
@@ -51,8 +49,7 @@ els.btnImport.addEventListener("click", async () => {
     const rows = await extractRowsFromPdf(selectedFile);
 
     if (!rows.length) {
-      els.status.textContent =
-        "No rows detected. If your PDF layout differs, tell me and I’ll adjust the parser.";
+      els.status.textContent = "No rows detected in PDF (layout may differ).";
       return;
     }
 
@@ -61,7 +58,7 @@ els.btnImport.addEventListener("click", async () => {
     els.status.textContent = `Extracted ${rows.length} rows. Saving to database…`;
     await dbAddMany(rows);
 
-    els.status.textContent = `Imported ${rows.length} rows. Refreshing summary…`;
+    els.status.textContent = `Imported ${rows.length}. Refreshing summary…`;
     await refreshSummary();
 
     els.status.textContent = `Done. Imported ${rows.length} rows into the database.`;
@@ -85,12 +82,8 @@ els.btnClear.addEventListener("click", async () => {
 
 els.btnExport.addEventListener("click", async () => {
   const rows = await dbGetAll();
-  if (!rows.length) {
-    alert("Database is empty.");
-    return;
-  }
-  const csv = toCsv(rows);
-  downloadTextFile(csv, "dividends_db_export.csv", "text/csv");
+  if (!rows.length) return alert("Database is empty.");
+  downloadTextFile(toCsv(rows), "dividends_db_export.csv", "text/csv");
 });
 
 els.symbolFilter.addEventListener("input", refreshSummary);
@@ -102,50 +95,33 @@ els.btnCopy.addEventListener("click", async () => {
   alert("Summary copied.");
 });
 
-/* ---------- helpers ---------- */
-
-function money(n) {
-  const x = Number(n || 0);
-  return x.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/* ---------- formatting ---------- */
+function money(n){ return Number(n||0).toLocaleString("en-PK",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function intFmt(n){ return Number(n||0).toLocaleString("en-PK",{maximumFractionDigits:0}); }
+function parseNumber(s){
+  if (s==null) return 0;
+  const v = Number(String(s).replace(/,/g,"").trim());
+  return Number.isFinite(v) ? v : 0;
 }
-function intFmt(n) {
-  const x = Number(n || 0);
-  return x.toLocaleString("en-PK", { maximumFractionDigits: 0 });
-}
-function parseNumber(s) {
-  if (s == null) return 0;
-  const cleaned = String(s).replace(/,/g, "").trim();
-  const val = Number(cleaned);
-  return Number.isFinite(val) ? val : 0;
-}
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+function escapeHtml(s){
+  return String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;").replaceAll("'","&#039;");
 }
 
-function setKpis(totals) {
-  if (!totals) {
-    els.kpiGross.textContent = "—";
-    els.kpiTax.textContent = "—";
-    els.kpiZakat.textContent = "—";
-    els.kpiNet.textContent = "—";
-    return;
-  }
-  els.kpiGross.textContent = money(totals.gross);
-  els.kpiTax.textContent = money(totals.tax + totals.jhTax);
-  els.kpiZakat.textContent = money(totals.zakat);
-  els.kpiNet.textContent = money(totals.net);
+/* ---------- UI ---------- */
+function setKpis(t){
+  if(!t){ els.kpiGross.textContent=els.kpiTax.textContent=els.kpiZakat.textContent=els.kpiNet.textContent="—"; return; }
+  els.kpiGross.textContent = money(t.gross);
+  els.kpiTax.textContent = money(t.tax + t.jhTax);
+  els.kpiZakat.textContent = money(t.zakat);
+  els.kpiNet.textContent = money(t.net);
 }
 
-function renderPreview(rows) {
-  els.previewBody.innerHTML = "";
-  rows.slice(0, 15).forEach(r => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
+function renderPreview(rows){
+  els.previewBody.innerHTML="";
+  rows.slice(0,15).forEach(r=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
       <td>${escapeHtml(r.paymentDate)}</td>
       <td>${escapeHtml(r.issueDate)}</td>
       <td><b>${escapeHtml(r.symbol)}</b></td>
@@ -154,19 +130,15 @@ function renderPreview(rows) {
       <td class="num">${money(r.tax)}</td>
       <td class="num">${money(r.jhTax)}</td>
       <td class="num">${money(r.zakat)}</td>
-      <td class="num">${money(r.net)}</td>
-    `;
+      <td class="num">${money(r.net)}</td>`;
     els.previewBody.appendChild(tr);
   });
 }
 
-async function refreshSummary() {
+async function refreshSummary(){
   const all = await dbGetAll();
-  const filter = (els.symbolFilter.value || "").trim().toUpperCase();
-
-  const rows = filter
-    ? all.filter(r => String(r.symbol || "").toUpperCase().includes(filter))
-    : all;
+  const q = (els.symbolFilter.value||"").trim().toUpperCase();
+  const rows = q ? all.filter(r=>String(r.symbol||"").toUpperCase().includes(q)) : all;
 
   const grouped = groupBySymbol(rows);
   const totals = calcTotals(rows);
@@ -176,218 +148,159 @@ async function refreshSummary() {
   renderRequestedText(grouped, totals);
 }
 
-function calcTotals(rows) {
-  const totals = { gross:0, tax:0, jhTax:0, zakat:0, net:0, count:0 };
-  rows.forEach(r => {
-    totals.gross += Number(r.gross || 0);
-    totals.tax += Number(r.tax || 0);
-    totals.jhTax += Number(r.jhTax || 0);
-    totals.zakat += Number(r.zakat || 0);
-    totals.net += Number(r.net || 0);
-    totals.count += 1;
+function calcTotals(rows){
+  const t={gross:0,tax:0,jhTax:0,zakat:0,net:0,count:0};
+  rows.forEach(r=>{
+    t.gross+=Number(r.gross||0);
+    t.tax+=Number(r.tax||0);
+    t.jhTax+=Number(r.jhTax||0);
+    t.zakat+=Number(r.zakat||0);
+    t.net+=Number(r.net||0);
+    t.count+=1;
   });
-  return totals;
+  return t;
 }
 
-function groupBySymbol(rows) {
-  const map = new Map();
-  rows.forEach(r => {
-    const sym = String(r.symbol || "").toUpperCase();
-    if (!sym) return;
-
-    if (!map.has(sym)) {
-      map.set(sym, { symbol:sym, gross:0, tax:0, jhTax:0, zakat:0, net:0, count:0 });
-    }
-    const g = map.get(sym);
-    g.gross += Number(r.gross || 0);
-    g.tax += Number(r.tax || 0);
-    g.jhTax += Number(r.jhTax || 0);
-    g.zakat += Number(r.zakat || 0);
-    g.net += Number(r.net || 0);
-    g.count += 1;
+function groupBySymbol(rows){
+  const m=new Map();
+  rows.forEach(r=>{
+    const sym=String(r.symbol||"").toUpperCase();
+    if(!sym) return;
+    if(!m.has(sym)) m.set(sym,{symbol:sym,gross:0,tax:0,jhTax:0,zakat:0,net:0,count:0});
+    const g=m.get(sym);
+    g.gross+=Number(r.gross||0);
+    g.tax+=Number(r.tax||0);
+    g.jhTax+=Number(r.jhTax||0);
+    g.zakat+=Number(r.zakat||0);
+    g.net+=Number(r.net||0);
+    g.count+=1;
   });
-
-  return Array.from(map.values()).sort((a,b) => b.gross - a.gross);
+  return Array.from(m.values()).sort((a,b)=>b.gross-a.gross);
 }
 
-function renderSummaryTable(grouped, totals) {
-  els.summaryBody.innerHTML = "";
-
-  grouped.forEach(g => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
+function renderSummaryTable(grouped, totals){
+  els.summaryBody.innerHTML="";
+  grouped.forEach(g=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
       <td><b>${escapeHtml(g.symbol)}</b></td>
       <td class="num">${money(g.gross)}</td>
       <td class="num">${money(g.tax)}</td>
       <td class="num">${money(g.jhTax)}</td>
       <td class="num">${money(g.zakat)}</td>
       <td class="num">${money(g.net)}</td>
-      <td class="num">${intFmt(g.count)}</td>
-    `;
+      <td class="num">${intFmt(g.count)}</td>`;
     els.summaryBody.appendChild(tr);
   });
 
-  els.ftGross.textContent = money(totals.gross);
-  els.ftTax.textContent = money(totals.tax);
-  els.ftJhTax.textContent = money(totals.jhTax);
-  els.ftZakat.textContent = money(totals.zakat);
-  els.ftNet.textContent = money(totals.net);
-  els.ftCount.textContent = intFmt(totals.count);
+  els.ftGross.textContent=money(totals.gross);
+  els.ftTax.textContent=money(totals.tax);
+  els.ftJhTax.textContent=money(totals.jhTax);
+  els.ftZakat.textContent=money(totals.zakat);
+  els.ftNet.textContent=money(totals.net);
+  els.ftCount.textContent=intFmt(totals.count);
 }
 
-function renderRequestedText(grouped, totals) {
-  const lines = [];
+function renderRequestedText(grouped, totals){
+  const lines=[];
   lines.push(`Dividend total: ${money(totals.gross)}`);
-  grouped.forEach(g => {
-    lines.push(` - ${g.symbol.padEnd(8, " ")} ${money(g.gross)}`);
-  });
+  grouped.forEach(g=>lines.push(` - ${g.symbol.padEnd(8," ")} ${money(g.gross)}`));
   lines.push("");
   lines.push(`Total tax deducted: ${money(totals.tax + totals.jhTax)}`);
   lines.push(`Total zakat deducted: ${money(totals.zakat)}`);
   lines.push(`Total dividend earned: ${money(totals.net)}`);
-
-  els.summaryText.textContent = lines.join("\n");
+  els.summaryText.textContent=lines.join("\n");
 }
 
 /* ---------- PDF extraction ---------- */
-
-async function extractRowsFromPdf(file) {
+async function extractRowsFromPdf(file){
   const buf = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
 
-  const allLines = [];
-  for (let p = 1; p <= pdf.numPages; p++) {
-    const page = await pdf.getPage(p);
-    const textContent = await page.getTextContent();
-
-    // join every "text item" into a new line; then normalize
-    const pageText = textContent.items.map(it => it.str).join("\n");
-    pageText.split(/\r?\n/).forEach(line => {
-      const cleaned = line.replace(/\s+/g, " ").trim();
-      if (cleaned) allLines.push(cleaned);
+  const allLines=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);
+    const tc=await page.getTextContent();
+    const pageText=tc.items.map(it=>it.str).join("\n");
+    pageText.split(/\r?\n/).forEach(line=>{
+      const cleaned=line.replace(/\s+/g," ").trim();
+      if(cleaned) allLines.push(cleaned);
     });
   }
 
-  // Detect row blocks starting with dd/mm/yyyy
-  const dateStart = /^\d{2}\/\d{2}\/\d{4}\b/;
-  const blocks = [];
-  let current = [];
+  const dateStart=/^\d{2}\/\d{2}\/\d{4}\b/;
+  const blocks=[];
+  let cur=[];
 
-  for (const line of allLines) {
-    // Skip obvious headers/footers
-    const skipPrefixes = [
-      "Dividend / Zakat", "Date and Time Printed", "UIN", "Name", "Security Symbol",
-      "Payment Date", "* As per Issuer", "Disclaimer", "By accessing", "End of Report",
-      "Total "
-    ];
-    if (skipPrefixes.some(pfx => line.startsWith(pfx))) continue;
+  for(const line of allLines){
+    const skip=["Dividend / Zakat","Date and Time Printed","UIN","Name","Security Symbol","Payment Date",
+      "* As per Issuer","Disclaimer","By accessing","End of Report","Total "];
+    if(skip.some(s=>line.startsWith(s))) continue;
 
-    if (dateStart.test(line)) {
-      if (current.length) blocks.push(current.join(" "));
-      current = [line];
-    } else if (current.length) {
-      current.push(line);
+    if(dateStart.test(line)){
+      if(cur.length) blocks.push(cur.join(" "));
+      cur=[line];
+    }else if(cur.length){
+      cur.push(line);
     }
   }
-  if (current.length) blocks.push(current.join(" "));
+  if(cur.length) blocks.push(cur.join(" "));
 
-  const rows = [];
-  for (const b of blocks) {
-    const r = parseCdcBlock(b);
-    if (r) rows.push(r);
+  const rows=[];
+  for(const b of blocks){
+    const r=parseCdcBlock(b);
+    if(r) rows.push(r);
   }
   return rows;
 }
 
-function parseCdcBlock(block) {
-  // 1) capture two dates at start
-  const mDates = block.match(/^(\d{2}\/\d{2}\/\d{4})\s+(\d{2}\/\d{2}\/\d{4})\s+(.*)$/);
-  if (!mDates) return null;
+function parseCdcBlock(block){
+  const m=block.match(/^(\d{2}\/\d{2}\/\d{4})\s+(\d{2}\/\d{2}\/\d{4})\s+(.*)$/);
+  if(!m) return null;
+  const paymentDate=m[1], issueDate=m[2], rest=m[3];
 
-  const paymentDate = mDates[1];
-  const issueDate = mDates[2];
-  const rest = mDates[3];
+  const num="(?:-?\\d{1,3}(?:,\\d{3})*|-?\\d+)(?:\\.\\d+)?";
+  const tailRe=new RegExp("\\s("+num+")\\s("+num+")\\s("+num+")\\s("+num+")\\s("+num+")\\s("+num+")\\s*$");
+  const t=rest.match(tailRe);
+  if(!t) return null;
 
-  // 2) capture last 6 numeric columns:
-  // securities, gross, tax, jhTax, zakat, net
-  const num = "(?:-?\\d{1,3}(?:,\\d{3})*|-?\\d+)(?:\\.\\d+)?";
-  const tailRe = new RegExp(
-    "\\s(" + num + ")\\s(" + num + ")\\s(" + num + ")\\s(" + num + ")\\s(" + num + ")\\s(" + num + ")\\s*$"
-  );
+  const securities=parseNumber(t[1]);
+  const gross=parseNumber(t[2]);
+  const tax=parseNumber(t[3]);
+  const jhTax=parseNumber(t[4]);
+  const zakat=parseNumber(t[5]);
+  const net=parseNumber(t[6]);
 
-  const mTail = rest.match(tailRe);
-  if (!mTail) return null;
+  const before=rest.slice(0, t.index).trim();
 
-  const securities = parseNumber(mTail[1]);
-  const gross = parseNumber(mTail[2]);
-  const tax = parseNumber(mTail[3]);
-  const jhTax = parseNumber(mTail[4]);
-  const zakat = parseNumber(mTail[5]);
-  const net = parseNumber(mTail[6]);
+  let symbol="", secName="";
+  const ms=before.match(/^([A-Z0-9]+)\s-\s(.+)$/i);
+  if(ms){ symbol=String(ms[1]).toUpperCase(); secName=String(ms[2]).trim(); }
+  else { const parts=before.split(" "); symbol=String(parts[0]||"").toUpperCase(); secName=parts.slice(1).join(" ").trim(); }
 
-  const beforeTail = rest.slice(0, mTail.index).trim();
+  if(!symbol) return null;
 
-  // symbol extraction (usually: SYMBOL - NAME ...)
-  let symbol = "";
-  let secName = "";
-
-  const mSym = beforeTail.match(/^([A-Z0-9]+)\s-\s(.+)$/i);
-  if (mSym) {
-    symbol = String(mSym[1]).toUpperCase();
-    secName = String(mSym[2]).trim();
-  } else {
-    const parts = beforeTail.split(" ");
-    symbol = String(parts[0] || "").toUpperCase();
-    secName = parts.slice(1).join(" ").trim();
-  }
-
-  if (!symbol) return null;
-
-  return {
-    paymentDate,
-    issueDate,
-    symbol,
-    secName,
-    securities,
-    gross,
-    tax,
-    jhTax,
-    zakat,
-    net,
-    source: "CDC PDF",
-    importedAt: new Date().toISOString()
-  };
+  return { paymentDate, issueDate, symbol, secName, securities, gross, tax, jhTax, zakat, net, source:"CDC PDF", importedAt:new Date().toISOString() };
 }
 
-/* ---------- export ---------- */
-
-function toCsv(rows) {
-  const headers = [
-    "paymentDate","issueDate","symbol","secName",
-    "securities","gross","tax","jhTax","zakat","net","source","importedAt"
-  ];
-  const lines = [headers.join(",")];
-  for (const r of rows) {
-    const line = headers.map(h => csvCell(r[h])).join(",");
-    lines.push(line);
-  }
-  return lines.join("\n");
+/* ---------- CSV export ---------- */
+function toCsv(rows){
+  const headers=["paymentDate","issueDate","symbol","secName","securities","gross","tax","jhTax","zakat","net","source","importedAt"];
+  const out=[headers.join(",")];
+  for(const r of rows) out.push(headers.map(h=>csvCell(r[h])).join(","));
+  return out.join("\n");
 }
-
-function csvCell(v) {
-  const s = String(v ?? "");
-  if (/[,"\n]/.test(s)) return `"${s.replaceAll('"','""')}"`;
+function csvCell(v){
+  const s=String(v??"");
+  if(/[,"\n]/.test(s)) return `"${s.replaceAll('"','""')}"`;
   return s;
 }
-
-function downloadTextFile(content, filename, mime) {
-  const blob = new Blob([content], { type: mime || "text/plain" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
+function downloadTextFile(content, filename, mime){
+  const blob=new Blob([content],{type:mime||"text/plain"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url; a.download=filename;
   document.body.appendChild(a);
-  a.click();
-  a.remove();
+  a.click(); a.remove();
   URL.revokeObjectURL(url);
 }
