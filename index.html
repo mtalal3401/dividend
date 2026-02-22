@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Dividend Summary → Database + Summary</title>
   <link rel="stylesheet" href="styles.css" />
-
-  <!-- PDF.js -->
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.js"></script>
 </head>
 <body>
@@ -16,7 +14,6 @@
         <h1>Dividend Summary (PDF) → Database</h1>
         <p class="muted">Upload CDC PDF → store in IndexedDB → totals + symbol-wise summary</p>
       </div>
-
       <div class="topActions">
         <button id="btnRefresh" class="btn secondary">Refresh Summary</button>
         <button id="btnExport" class="btn secondary">Export DB CSV</button>
@@ -26,19 +23,15 @@
   </header>
 
   <main class="wrap grid">
-    <!-- Import -->
     <section class="card">
       <h2>1) Import CDC PDF</h2>
 
-      <!-- ✅ Fixed file picker -->
       <div class="row">
-        <div class="filePick">
-          <div class="fileButton">
-            Select PDF
-            <input id="fileInput" type="file" accept=".pdf,application/pdf" />
-          </div>
-          <div id="fileName" class="muted">No file selected</div>
-        </div>
+        <!-- ✅ Most compatible file picker -->
+        <input id="fileInput" class="realFile" type="file" accept=".pdf,application/pdf" />
+
+        <label for="fileInput" class="fileButton">Select PDF</label>
+        <div id="fileName" class="muted">No file selected</div>
 
         <button id="btnImport" class="btn" disabled>Import & Save to Database</button>
       </div>
@@ -66,7 +59,6 @@
       </div>
     </section>
 
-    <!-- Summary -->
     <section class="card">
       <h2>2) Summary</h2>
 
@@ -75,17 +67,14 @@
           <div class="kpiLabel">Dividend Total (Gross)</div>
           <div id="kpiGross" class="kpiValue">—</div>
         </div>
-
         <div class="kpi">
           <div class="kpiLabel">Total Tax Deducted (Tax + JH Tax)</div>
           <div id="kpiTax" class="kpiValue">—</div>
         </div>
-
         <div class="kpi">
           <div class="kpiLabel">Total Zakat Deducted</div>
           <div id="kpiZakat" class="kpiValue">—</div>
         </div>
-
         <div class="kpi">
           <div class="kpiLabel">Total Dividend Earned (Net)</div>
           <div id="kpiNet" class="kpiValue">—</div>
