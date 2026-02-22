@@ -20,7 +20,6 @@ body{
   color:var(--text);
   background:var(--bg);
 }
-
 .wrap{ width:min(1200px, calc(100vw - 32px)); margin:0 auto; }
 
 .topbar{
@@ -37,7 +36,6 @@ body{
 h1{ margin:0; font-size:22px; }
 h2{ margin:0 0 10px 0; font-size:18px; }
 h3{ margin:0; font-size:15px; }
-
 .muted{ color:var(--muted); }
 
 .grid{
@@ -101,15 +99,17 @@ h3{ margin:0; font-size:15px; }
   background:#fbfcff;
 }
 
-/* ✅ Fixed file picker (reliable click + selection) */
-.filePick{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  flex-wrap:wrap;
+/* ✅ Hide the real file input but keep it functional via label[for] */
+.realFile{
+  position:absolute;
+  left:-9999px;
+  width:1px;
+  height:1px;
+  opacity:0;
 }
+
+/* ✅ The visible picker button */
 .fileButton{
-  position:relative;
   display:inline-flex;
   align-items:center;
   justify-content:center;
@@ -123,11 +123,8 @@ h3{ margin:0; font-size:15px; }
   height:44px;
   user-select:none;
 }
-.fileButton input[type="file"]{
-  position:absolute;
-  inset:0;
-  opacity:0;
-  cursor:pointer;
+.fileButton:hover{
+  background:#f2f7ff;
 }
 
 .kpis{
@@ -172,7 +169,6 @@ table{
 th, td{
   padding:10px 10px;
   border-bottom:1px solid var(--line);
-  vertical-align:top;
 }
 th{
   position:sticky;
@@ -182,11 +178,7 @@ th{
   text-align:left;
 }
 td.num, th.num{ text-align:right; font-variant-numeric: tabular-nums; }
-
-tfoot td{
-  background:#fbfcff;
-  font-weight:900;
-}
+tfoot td{ background:#fbfcff; font-weight:900; }
 
 .pre{
   border:1px solid var(--line);
