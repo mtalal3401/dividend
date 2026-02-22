@@ -3,37 +3,40 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Dividend PDF → Database & Summary</title>
+  <title>Dividend Summary → DB & Summary</title>
   <link rel="stylesheet" href="styles.css" />
+
+  <!-- PDF.js -->
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.js"></script>
 </head>
 <body>
   <header class="topbar">
-    <div class="wrap topbarInner">
+    <div class="wrap headerRow">
       <div>
-        <h1>Dividend PDF → Database & Summary</h1>
-        <p class="muted">Upload CDC “Dividend / Zakat & Tax Deduction Summary Report” → store rows → get totals</p>
+        <h1>Dividend Summary → Database</h1>
+        <p class="muted">Upload CDC dividend PDF → Save rows → Auto summary</p>
       </div>
       <div class="headerBtns">
-        <button id="btnRefresh" class="btn secondary">Refresh</button>
-        <button id="btnExport" class="btn secondary">Export CSV</button>
-        <button id="btnClear" class="btn danger">Clear DB</button>
+        <button id="btnRefresh" class="btn secondary" type="button">Refresh</button>
+        <button id="btnExport" class="btn secondary" type="button">Export CSV</button>
+        <button id="btnClear" class="btn danger" type="button">Clear DB</button>
       </div>
     </div>
   </header>
 
   <main class="wrap grid">
+    <!-- LEFT: Upload + Preview -->
     <section class="card">
       <h2>1) Upload PDF</h2>
 
-      <!-- ✅ SIMPLE, RELIABLE INPUT -->
       <div class="row">
         <input id="fileInput" type="file" accept=".pdf,application/pdf" />
-        <button id="btnImport" class="btn" disabled>Import to Database</button>
+        <!-- ✅ Always clickable -->
+        <button id="btnImport" class="btn" type="button">Import to Database</button>
       </div>
 
       <div id="status" class="status muted">
-        Select a PDF file (CDC Dividend / Zakat & Tax Deduction Summary Report).
+        Select your CDC Dividend / Zakat & Tax Deduction Summary Report (PDF), then click Import.
       </div>
 
       <h3 class="mt">Preview (first 15 rows)</h3>
@@ -57,6 +60,7 @@
       </div>
     </section>
 
+    <!-- RIGHT: Summary -->
     <section class="card">
       <h2>2) Summary</h2>
 
@@ -80,11 +84,11 @@
       </div>
 
       <div class="row mt">
-        <input id="symbolFilter" class="input" placeholder="Filter symbol (e.g., MEBL)" />
-        <button id="btnCopy" class="btn secondary">Copy Summary</button>
+        <input id="symbolFilter" class="input" placeholder="Filter by symbol (e.g., MEBL)" />
+        <button id="btnCopy" class="btn secondary" type="button">Copy Summary</button>
       </div>
 
-      <h3 class="mt">Requested Output</h3>
+      <h3 class="mt">Requested format</h3>
       <pre id="summaryText" class="pre">—</pre>
 
       <h3 class="mt">Symbol-wise totals</h3>
@@ -115,12 +119,12 @@
           </tfoot>
         </table>
       </div>
+    </section>
+  </main>
 
-      <div class="muted mt small">
-        Note: The CDC report includes a “Total …” line like:
-        <span class="mono">Total 775,875.50 120,098.00 0.00 0.00 655,777.50</span> :contentReference[oaicite:2]{index=2}
-      </div>
-    </secti:contentReference[oaicite:3]{index=3}ter class="wrap footer muted">Stored locally in your browser (IndexedDB). No uploads.</footer>
+  <footer class="wrap footer muted">
+    Data is stored locally in your browser (IndexedDB). Nothing is uploaded.
+  </footer>
 
   <script src="db.js"></script>
   <script src="app.js"></script>
