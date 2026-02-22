@@ -6,15 +6,15 @@
   <title>Dividend Summary → Database + Summary</title>
   <link rel="stylesheet" href="styles.css" />
 
-  <!-- PDF.js (for PDF text extraction) -->
+  <!-- PDF.js -->
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.js"></script>
 </head>
 <body>
   <header class="topbar">
-    <div class="wrap">
+    <div class="wrap topbarInner">
       <div>
         <h1>Dividend Summary (PDF) → Database</h1>
-        <p class="muted">Upload CDC PDF → Store in IndexedDB → Get totals & symbol-wise summary</p>
+        <p class="muted">Upload CDC PDF → store in IndexedDB → totals + symbol-wise summary</p>
       </div>
 
       <div class="topActions">
@@ -26,26 +26,24 @@
   </header>
 
   <main class="wrap grid">
+    <!-- Import -->
     <section class="card">
       <h2>1) Import CDC PDF</h2>
 
+      <!-- ✅ Fixed file picker -->
       <div class="row">
-        <label class="file">
-          <input id="fileInput" type="file" accept="application/pdf,.pdf" />
-          <span>Select PDF</span>
-        </label>
+        <div class="filePick">
+          <div class="fileButton">
+            Select PDF
+            <input id="fileInput" type="file" accept=".pdf,application/pdf" />
+          </div>
+          <div id="fileName" class="muted">No file selected</div>
+        </div>
 
         <button id="btnImport" class="btn" disabled>Import & Save to Database</button>
       </div>
 
-      <div class="row">
-        <label class="muted">
-          Parser targets rows like:
-          <span class="mono">Payment Date | Issue Date | Symbol | No. of Securities | Gross | Tax | JH Tax | Zakat | Net</span>
-        </label>
-      </div>
-
-      <div id="status" class="status muted">No file selected.</div>
+      <div id="status" class="status muted">Choose a PDF to start.</div>
 
       <h3 class="mt">Preview (first 15 extracted rows)</h3>
       <div class="tableWrap">
@@ -68,6 +66,7 @@
       </div>
     </section>
 
+    <!-- Summary -->
     <section class="card">
       <h2>2) Summary</h2>
 
@@ -76,14 +75,17 @@
           <div class="kpiLabel">Dividend Total (Gross)</div>
           <div id="kpiGross" class="kpiValue">—</div>
         </div>
+
         <div class="kpi">
           <div class="kpiLabel">Total Tax Deducted (Tax + JH Tax)</div>
           <div id="kpiTax" class="kpiValue">—</div>
         </div>
+
         <div class="kpi">
           <div class="kpiLabel">Total Zakat Deducted</div>
           <div id="kpiZakat" class="kpiValue">—</div>
         </div>
+
         <div class="kpi">
           <div class="kpiLabel">Total Dividend Earned (Net)</div>
           <div id="kpiNet" class="kpiValue">—</div>
@@ -130,7 +132,7 @@
   </main>
 
   <footer class="wrap footer muted">
-    Data is stored locally in your browser (IndexedDB). No internet upload.
+    Data is stored locally in your browser (IndexedDB). No upload to internet.
   </footer>
 
   <script src="db.js"></script>
