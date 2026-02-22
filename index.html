@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Dividend Summary → Database + Summary</title>
+  <title>Dividend PDF → Database & Summary</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.js"></script>
 </head>
@@ -11,12 +11,12 @@
   <header class="topbar">
     <div class="wrap topbarInner">
       <div>
-        <h1>Dividend Summary (PDF) → Database</h1>
-        <p class="muted">Upload CDC PDF → store in IndexedDB → totals + symbol-wise summary</p>
+        <h1>Dividend PDF → Database & Summary</h1>
+        <p class="muted">Upload CDC “Dividend / Zakat & Tax Deduction Summary Report” → store rows → get totals</p>
       </div>
-      <div class="topActions">
-        <button id="btnRefresh" class="btn secondary">Refresh Summary</button>
-        <button id="btnExport" class="btn secondary">Export DB CSV</button>
+      <div class="headerBtns">
+        <button id="btnRefresh" class="btn secondary">Refresh</button>
+        <button id="btnExport" class="btn secondary">Export CSV</button>
         <button id="btnClear" class="btn danger">Clear DB</button>
       </div>
     </div>
@@ -24,23 +24,21 @@
 
   <main class="wrap grid">
     <section class="card">
-      <h2>1) Import CDC PDF</h2>
+      <h2>1) Upload PDF</h2>
 
+      <!-- ✅ SIMPLE, RELIABLE INPUT -->
       <div class="row">
-        <!-- ✅ Most compatible file picker -->
-        <input id="fileInput" class="realFile" type="file" accept=".pdf,application/pdf" />
-
-        <label for="fileInput" class="fileButton">Select PDF</label>
-        <div id="fileName" class="muted">No file selected</div>
-
-        <button id="btnImport" class="btn" disabled>Import & Save to Database</button>
+        <input id="fileInput" type="file" accept=".pdf,application/pdf" />
+        <button id="btnImport" class="btn" disabled>Import to Database</button>
       </div>
 
-      <div id="status" class="status muted">Choose a PDF to start.</div>
+      <div id="status" class="status muted">
+        Select a PDF file (CDC Dividend / Zakat & Tax Deduction Summary Report).
+      </div>
 
-      <h3 class="mt">Preview (first 15 extracted rows)</h3>
+      <h3 class="mt">Preview (first 15 rows)</h3>
       <div class="tableWrap">
-        <table id="previewTable">
+        <table>
           <thead>
             <tr>
               <th>Payment Date</th>
@@ -54,7 +52,7 @@
               <th class="num">Net</th>
             </tr>
           </thead>
-          <tbody></tbody>
+          <tbody id="previewBody"></tbody>
         </table>
       </div>
     </section>
@@ -64,34 +62,34 @@
 
       <div class="kpis">
         <div class="kpi">
-          <div class="kpiLabel">Dividend Total (Gross)</div>
+          <div class="kpiLabel">Dividend total (Gross)</div>
           <div id="kpiGross" class="kpiValue">—</div>
         </div>
         <div class="kpi">
-          <div class="kpiLabel">Total Tax Deducted (Tax + JH Tax)</div>
+          <div class="kpiLabel">Total tax deducted (Tax + JH Tax)</div>
           <div id="kpiTax" class="kpiValue">—</div>
         </div>
         <div class="kpi">
-          <div class="kpiLabel">Total Zakat Deducted</div>
+          <div class="kpiLabel">Total zakat deducted</div>
           <div id="kpiZakat" class="kpiValue">—</div>
         </div>
         <div class="kpi">
-          <div class="kpiLabel">Total Dividend Earned (Net)</div>
+          <div class="kpiLabel">Total dividend earned (Net)</div>
           <div id="kpiNet" class="kpiValue">—</div>
         </div>
       </div>
 
       <div class="row mt">
-        <input id="symbolFilter" class="input" placeholder="Filter by symbol (e.g., MEBL)" />
+        <input id="symbolFilter" class="input" placeholder="Filter symbol (e.g., MEBL)" />
         <button id="btnCopy" class="btn secondary">Copy Summary</button>
       </div>
 
-      <h3 class="mt">Requested Format</h3>
+      <h3 class="mt">Requested Output</h3>
       <pre id="summaryText" class="pre">—</pre>
 
-      <h3 class="mt">Symbol-wise Table</h3>
+      <h3 class="mt">Symbol-wise totals</h3>
       <div class="tableWrap">
-        <table id="summaryTable">
+        <table>
           <thead>
             <tr>
               <th>Symbol</th>
@@ -103,7 +101,7 @@
               <th class="num">Count</th>
             </tr>
           </thead>
-          <tbody></tbody>
+          <tbody id="sumBody"></tbody>
           <tfoot>
             <tr>
               <td><b>TOTAL</b></td>
@@ -117,12 +115,12 @@
           </tfoot>
         </table>
       </div>
-    </section>
-  </main>
 
-  <footer class="wrap footer muted">
-    Data is stored locally in your browser (IndexedDB). No upload to internet.
-  </footer>
+      <div class="muted mt small">
+        Note: The CDC report includes a “Total …” line like:
+        <span class="mono">Total 775,875.50 120,098.00 0.00 0.00 655,777.50</span> :contentReference[oaicite:2]{index=2}
+      </div>
+    </secti:contentReference[oaicite:3]{index=3}ter class="wrap footer muted">Stored locally in your browser (IndexedDB). No uploads.</footer>
 
   <script src="db.js"></script>
   <script src="app.js"></script>
