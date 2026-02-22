@@ -1,6 +1,3 @@
-/* IndexedDB: dividend_db
-   store: dividends (keyPath: id, autoIncrement)
-*/
 const DB_NAME = "dividend_db";
 const DB_VERSION = 1;
 const STORE = "dividends";
@@ -38,8 +35,7 @@ async function dbGetAll() {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, "readonly");
-    const store = tx.objectStore(STORE);
-    const req = store.getAll();
+    const req = tx.objectStore(STORE).getAll();
     req.onsuccess = () => resolve(req.result || []);
     req.onerror = () => reject(req.error);
   });
