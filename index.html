@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dividend Summary → Database + Summary</title>
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- PDF.js (for PDF text extraction) -->
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap">
+      <div>
+        <h1>Dividend Summary (PDF) → Database</h1>
+        <p class="muted">Upload CDC PDF → Store in IndexedDB → Get totals & symbol-wise summary</p>
+      </div>
+
+      <div class="topActions">
+        <button id="btnRefresh" class="btn secondary">Refresh Summary</button>
+        <button id="btnExport" class="btn secondary">Export DB CSV</button>
+        <button id="btnClear" class="btn danger">Clear DB</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap grid">
+    <section class="card">
+      <h2>1) Import CDC PDF</h2>
+
+      <div class="row">
+        <label class="file">
+          <input id="fileInput" type="file" accept="application/pdf,.pdf" />
+          <span>Select PDF</span>
+        </label>
+
+        <button id="btnImport" class="btn" disabled>Import & Save to Database</button>
+      </div>
+
+      <div class="row">
+        <label class="muted">
+          Parser targets rows like:
+          <span class="mono">Payment Date | Issue Date | Symbol | No. of Securities | Gross | Tax | JH Tax | Zakat | Net</span>
+        </label>
+      </div>
+
+      <div id="status" class="status muted">No file selected.</div>
+
+      <h3 class="mt">Preview (first 15 extracted rows)</h3>
+      <div class="tableWrap">
+        <table id="previewTable">
+          <thead>
+            <tr>
+              <th>Payment Date</th>
+              <th>Issue Date</th>
+              <th>Symbol</th>
+              <th class="num">Securities</th>
+              <th class="num">Gross</th>
+              <th class="num">Tax</th>
+              <th class="num">JH Tax</th>
+              <th class="num">Zakat</th>
+              <th class="num">Net</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2) Summary</h2>
+
+      <div class="kpis">
+        <div class="kpi">
+          <div class="kpiLabel">Dividend Total (Gross)</div>
+          <div id="kpiGross" class="kpiValue">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpiLabel">Total Tax Deducted (Tax + JH Tax)</div>
+          <div id="kpiTax" class="kpiValue">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpiLabel">Total Zakat Deducted</div>
+          <div id="kpiZakat" class="kpiValue">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpiLabel">Total Dividend Earned (Net)</div>
+          <div id="kpiNet" class="kpiValue">—</div>
+        </div>
+      </div>
+
+      <div class="row mt">
+        <input id="symbolFilter" class="input" placeholder="Filter by symbol (e.g., MEBL)" />
+        <button id="btnCopy" class="btn secondary">Copy Summary</button>
+      </div>
+
+      <h3 class="mt">Requested Format</h3>
+      <pre id="summaryText" class="pre">—</pre>
+
+      <h3 class="mt">Symbol-wise Table</h3>
+      <div class="tableWrap">
+        <table id="summaryTable">
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th class="num">Gross</th>
+              <th class="num">Tax</th>
+              <th class="num">JH Tax</th>
+              <th class="num">Zakat</th>
+              <th class="num">Net</th>
+              <th class="num">Count</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot>
+            <tr>
+              <td><b>TOTAL</b></td>
+              <td id="ftGross" class="num">—</td>
+              <td id="ftTax" class="num">—</td>
+              <td id="ftJhTax" class="num">—</td>
+              <td id="ftZakat" class="num">—</td>
+              <td id="ftNet" class="num">—</td>
+              <td id="ftCount" class="num">—</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap footer muted">
+    Data is stored locally in your browser (IndexedDB). No internet upload.
+  </footer>
+
+  <script src="db.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
